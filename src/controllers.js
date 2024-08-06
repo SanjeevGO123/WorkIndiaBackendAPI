@@ -81,15 +81,14 @@ exports.getRides = async (req, res) => {
             'SELECT * FROM cars WHERE current_city = $1 AND category = $2',
             [origin, category]
         );
-        const car_ids = result.rows.map(car => car.id);
-        const rent_history = await pool.query(`SELECT origin,destination,amount FROM rent_history where car_id = ${car_ids}`,[]);
-        const rides = result.rows.map(car => {
+        const rides = await Promise.all(result.rows.map(async (car) => {
+            const rent_history = await pool.query('SELECT origin,destination,amount FROM rent_history WHERE car_id = $1', [car.id]);
             return {
                 ...car,
                 rent_history: rent_history.rows,
                 total_payable_amt: car.rent_per_hr * required_hours,
             };
-        });
+        }));
         res.status(200).json(rides);
     } catch (err) {
         res.status(500).json({ error: err.message });
